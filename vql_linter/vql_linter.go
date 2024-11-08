@@ -6,19 +6,66 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
+	kingpin "gopkg.in/alecthomas/kingpin.v2"
 	"www.velocidex.com/golang/velociraptor/config"
 	config_proto "www.velocidex.com/golang/velociraptor/config/proto"
 	"www.velocidex.com/golang/velociraptor/services"
 	"www.velocidex.com/golang/velociraptor/services/orgs"
 )
 
+// Takes 1 argument yaml file or directory with yaml files to run linter on
+// and optionally flag -r to search yamls in subdirectories
+
+var (
+	app      = kingpin.New("vql-linter", "VQL linter for Velociraptor YAML artifacts.")
+	filename = app.Arg("target", "Yaml file or dir with yaml files to lint").Required().String()
+	verbose  = app.Flag("verbose", "Verbose output").Short('v').Bool()
+)
+
+func getFilesInDir(dir string) ([]string, error) {
+	var files []string
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".yaml") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: main <path_to_yaml_file>")
+	// Parse command line arguments
+	kingpin.MustParse(app.Parse(os.Args[1:]))
+	// Check if argument is a file or directory
+	fileInfo, err := os.Stat(*filename)
+	if err != nil {
+		fmt.Printf("Failed to get file info: %v\n", err)
 		os.Exit(1)
+	}
+
+	is_dir := fileInfo.IsDir()
+	var yamlFiles []string
+
+	if !is_dir {
+		yamlFiles = append(yamlFiles, *filename)
+	} else {
+		// If it's a directory, get all yaml files in it
+		yamlFiles, err = getFilesInDir(*filename)
+		if err != nil {
+			fmt.Printf("Failed to get files in directory: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	serverFilePath, err := saveServerConfigToTmpFile()
@@ -26,13 +73,6 @@ func main() {
 		fmt.Printf("Failed to save server config to tmp file: %v\n", err)
 		os.Exit(1)
 	}
-
-	yamlFilePath := os.Args[1]
-
-	// load content of file to yamlContent
-	yamlContent, err := os.ReadFile(yamlFilePath)
-	// convert it to string
-	yamlContentStr := string(yamlContent)
 
 	config_obj, err := new(config.Loader).
 		//WithFileLoader("server.config.yaml").
@@ -66,14 +106,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	_, err = repository.LoadYaml(yamlContentStr, services.ArtifactOptions{
-		ArtifactIsBuiltIn: true,
-		ValidateArtifact:  true,
-	})
-	if err != nil {
-		fmt.Printf("Failed to load YAML: %v\n", err)
-		os.Exit(1)
+	returnCode := 0
+
+	for _, yamlFile := range yamlFiles {
+		yamlContent, err := os.ReadFile(yamlFile)
+		if err != nil {
+			fmt.Printf("Failed to read YAML file: %v\n", err)
+			os.Exit(1)
+		}
+		yamlContentStr := string(yamlContent)
+
+		_, err = repository.LoadYaml(yamlContentStr, services.ArtifactOptions{
+			ArtifactIsBuiltIn: true,
+			ValidateArtifact:  true,
+		})
+		if err != nil {
+			fmt.Printf("[%s] Failed to load YAML: %v\n", yamlFile, err)
+			returnCode = 1
+		} else {
+			if *verbose {
+				fmt.Printf("[%s] Successfully loaded YAML\n", yamlFile)
+			}
+		}
+
 	}
 
-	fmt.Println("YAML loaded successfully")
+	os.Exit(returnCode)
 }

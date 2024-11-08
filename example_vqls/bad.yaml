@@ -1,0 +1,18 @@
+name: Custom.Example.Bad
+description: |
+   Dummy description for the test      
+   
+author: Michal Cichorz 
+
+type: CLIENT
+
+precondition:
+      SELECT OS From info() where OS = 'linux'
+
+sources:
+  - name: TestSource
+    query: |
+        LET Time => timestamp(epoch=now())  // => should be <=
+        SELECT * From info()
+
+ 
