@@ -9,7 +9,7 @@ on:
 jobs:
   release:
     permissions: write-all
-    
+
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -24,14 +24,22 @@ jobs:
     - name: Build
       run: bash build.sh
 
+    - name: Generate release tag
+        id: generate_release_tag
+        uses: amitsingh-007/next-release-tag@v4.0.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          tag_prefix: 'v'
+          tag_template: 'yyyy.mm.dd.i'
+
     - name: Create Release
       id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
+        tag_name: ${{ steps.generate_release_tag.outputs.next_release_tag }}
+        release_name: Release ${{ steps.generate_release_tag.outputs.next_release_tag }}
         body: |
           Changes in this Release:
           - Added new feature
