@@ -25,3 +25,14 @@ jobs:
 
     - name: Build
       run: bash build.sh
+
+    - name: Store vql-linter
+      uses: actions/upload-artifact@v2
+      with:
+        name: vql-linter
+
+    - name: Store vql-linter.exe
+      uses: actions/upload-artifact@v2
+      with:
+        name: vql-linter.exe
+        
