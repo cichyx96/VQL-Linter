@@ -14,17 +14,22 @@ usage: vql-linter [<flags>] <target>
 VQL linter for Velociraptor YAML artifacts.
 
 Flags:
-      --help     Show context-sensitive help (also try --help-long and --help-man).
-  -v, --verbose  Verbose output
+  --help                 Show context-sensitive help (also try --help-long and --help-man).
+  --disable-nested-lint  Disable linting of nested VQLs
 
 Args:
-  <target>  Yaml file or dir with yaml files to lint
+  <target>  Path to yaml file or dir with yaml files to lint
 ```
 
 Example
 ```
-./vql-linter -v example_vqls
+./vql-linter example_vqls
 
-[example_vqls/bad.yaml] Failed to load YAML: While parsing source query: 1:10: unexpected token "=>" (expected "=" | "<=")
-[example_vqls/good.yaml] Successfully loaded YAML
+[--snipped--]
+
+- [bad.yaml] Failed to load YAML: While parsing source query: 1:10: unexpected token "=>" (expected "=" | "<=")
++ [ Custom.Example.Good ] Successfully compiled hunt
+- [ Custom.Example.Nested.Bad ] Failed to compile hunt:  Unknown artifact reference Custom.Example.NONEXISTENT
++ [ Custom.Example.Nested.Good ] Successfully compiled hunt
+Error: At least one YAML failed to compile
 ```
