@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Velocidex/yaml/v2"
-//	"github.com/stretchr/testify/require"
+	//	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"www.velocidex.com/golang/velociraptor/vtesting/assert"
 
@@ -115,7 +115,6 @@ func (self *TestSuite) LoadConfig() *config_proto.Config {
 	config_obj, _ := new(config.Loader).
 		WithEnvLiteralLoader("VELOCIRAPTOR_CONFIG").WithRequiredFrontend().
 		//WithWriteback().WithVerbose(true).
-		WithVerbose(true).
 		LoadAndValidate()
 	//require.NoError(self.T(), err)
 

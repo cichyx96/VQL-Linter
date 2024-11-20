@@ -23,13 +23,10 @@ Args:
 
 Example
 ```
-./vql-linter example_vqls
-
-[--snipped--]
+./vql-linter example_vqls/
 
 - [bad.yaml] Failed to load YAML: While parsing source query: 1:10: unexpected token "=>" (expected "=" | "<=")
 + [ Custom.Example.Good ] Successfully compiled hunt
 - [ Custom.Example.Nested.Bad ] Failed to compile hunt:  Unknown artifact reference Custom.Example.NONEXISTENT
-+ [ Custom.Example.Nested.Good ] Successfully compiled hunt
-Error: At least one YAML failed to compile
++ [ Custom.Example.Nested.Good ] Successfully
 ```
