@@ -1,0 +1,17 @@
+name: Custom.Example.Nested.Bad
+description: |
+   Dummy description for the test      
+   
+author: Michal Cichorz 
+
+type: CLIENT
+
+precondition:
+      SELECT OS From info() where OS = 'linux'
+
+sources:
+  - name: TestSource
+    query: |
+        SELECT * From Artifact.Custom.Example.NONEXISTENT()
+
+ 

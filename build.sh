@@ -1,4 +1,5 @@
 cp -r vql_linter velociraptor/
+cp -r to_replace/file_store velociraptor/
 cd velociraptor
 export PATH=$PATH:~/go/bin
 
