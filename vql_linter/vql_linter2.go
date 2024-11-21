@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -33,18 +32,22 @@ func (self *HuntTestSuite) SetupTest() {
 }
 
 func (self *HuntTestSuite) GetAllYamlFilesInDir(dirPath string) []string {
-	// Get all .yaml files in dir and return them in a list
-	files, err := ioutil.ReadDir(dirPath)
+	var yamlFiles []string
+
+	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() && filepath.Ext(info.Name()) == ".yaml" {
+			yamlFiles = append(yamlFiles, path)
+		}
+		return nil
+	})
+
 	if err != nil {
 		panic(err)
 	}
 
-	yamlFiles := []string{}
-	for _, file := range files {
-		if filepath.Ext(file.Name()) == ".yaml" {
-			yamlFiles = append(yamlFiles, file.Name())
-		}
-	}
 	return yamlFiles
 }
 
@@ -62,8 +65,7 @@ func (self *HuntTestSuite) LoadArtifactsFromPath(path string, repository service
 
 	var yaml_files []string
 	if !fileInfo.IsDir() {
-		filename := filepath.Base(path)
-		yaml_files = []string{filename}
+		yaml_files = []string{path}
 	} else {
 		yaml_files = self.GetAllYamlFilesInDir(path)
 	}
@@ -71,10 +73,9 @@ func (self *HuntTestSuite) LoadArtifactsFromPath(path string, repository service
 	artifacts := []*artifacts_proto.Artifact{}
 
 	error_flag := false
-	baseDir := filepath.Dir(path)
 
 	for _, file := range yaml_files {
-		data, err := ioutil.ReadFile(baseDir + "/" + file)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			panic(err)
 		}
