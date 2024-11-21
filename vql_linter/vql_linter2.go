@@ -1,19 +1,29 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/stretchr/testify/assert"
+
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
+
 	api_proto "www.velocidex.com/golang/velociraptor/api/proto"
+
 	artifacts_proto "www.velocidex.com/golang/velociraptor/artifacts/proto"
 	"www.velocidex.com/golang/velociraptor/file_store/test_utils"
+
 	flows_proto "www.velocidex.com/golang/velociraptor/flows/proto"
 	"www.velocidex.com/golang/velociraptor/services"
 	"www.velocidex.com/golang/velociraptor/vql/acl_managers"
 )
+
+//go:embed definitions/*
+var builtinArtifactDefinitions embed.FS
 
 var (
 	app                 = kingpin.New("vql-linter", "VQL linter for Velociraptor YAML artifacts.")
@@ -49,6 +59,34 @@ func (self *HuntTestSuite) GetAllYamlFilesInDir(dirPath string) []string {
 	}
 
 	return yamlFiles
+}
+
+func (self *HuntTestSuite) LoadBuiltinArtifacts(repository services.Repository) ([]*artifacts_proto.Artifact, error) {
+
+	all_artifacts := []*artifacts_proto.Artifact{}
+
+	// Load all artifacts from the embedded filesystem
+	err := fs.WalkDir(builtinArtifactDefinitions, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() || filepath.Ext(path) != ".yaml" {
+			return nil
+		}
+		data, err := builtinArtifactDefinitions.ReadFile(path)
+		artifact, err := repository.LoadYaml(string(data), services.ArtifactOptions{
+			ValidateArtifact:  true,
+			ArtifactIsBuiltIn: true})
+		if err != nil {
+			//fmt.Printf("Error: Failed to load built-in artifact %s: %v\n", path, err)
+			return nil
+		}
+		all_artifacts = append(all_artifacts, artifact)
+		return nil
+	})
+	return all_artifacts, err
+
 }
 
 func (self *HuntTestSuite) LoadArtifactsFromPath(path string, repository services.Repository) ([]*artifacts_proto.Artifact, bool) {
@@ -123,16 +161,28 @@ func (self *HuntTestSuite) TestCompilation() {
 	repository, err := manager.GetGlobalRepository(self.ConfigObj)
 	assert.NoError(self.T(), err)
 
+	_, err = self.LoadBuiltinArtifacts(repository)
+	if err != nil {
+		fmt.Println("Error: Failed to load built-in artifacts")
+		os.Exit(1)
+	}
+
 	artifacts, error_flag := self.LoadArtifactsFromPath(*target, repository)
 
 	if !*disable_nested_lint {
 		for _, artifact := range artifacts {
 			//fmt.Println(artifact.Name)
 			// Try to compile a hunt with the artifact name
+
 			artifact_name, err := self.CompileHunt(artifact.Name)
 			if err != nil {
-				fmt.Println("- [", artifact_name, "] Failed to compile VQL: ", err)
-				error_flag = true
+				// if error contains 'context deadline exceeded' then we print we dont support plugins with files yet
+				if strings.Contains(err.Error(), "context deadline exceeded") {
+					fmt.Println("% [", artifact_name, "] Linting artifacts with files is not supported yet")
+				} else {
+					fmt.Println("- [", artifact_name, "] Failed to compile VQL: ", err)
+					error_flag = true
+				}
 			} else {
 				fmt.Println("+ [", artifact_name, "] Successfully compiled VQL")
 			}

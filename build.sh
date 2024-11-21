@@ -1,6 +1,8 @@
 cp -r vql_linter velociraptor/
 cp -r to_replace/file_store velociraptor/
 cd velociraptor
+mkdir velociraptor/vql_linter/definitions
+cp -r artifacts/definitions vql_linter/definitions
 export PATH=$PATH:~/go/bin
 
 go run make.go -v linux
